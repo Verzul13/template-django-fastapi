@@ -1,0 +1,16 @@
+# Django
+SECRET_KEY=change-me-super-secret
+DEBUG=1
+ALLOWED_HOSTS=example.com localhost 127.0.0.1
+
+# DB
+POSTGRES_DB=app_db
+POSTGRES_USER=app_user
+POSTGRES_PASSWORD=app_password
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+
+# Для логов
+UDP_LOG_HOST=45.91.211.51
+UDP_LOG_PORT=9999
+SERVER_NAME=djangofastapi

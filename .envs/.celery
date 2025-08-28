@@ -1,0 +1,2 @@
+CELERY_BROKER_URL=amqp://app_rmq:app_rmq@rabbitmq:5672//
+CELERY_RESULT_BACKEND=django-db

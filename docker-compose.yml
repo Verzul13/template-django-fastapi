@@ -1,0 +1,115 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    env_file:
+      - ./.envs/.postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    env_file:
+      - ./.envs/.rabbitmq
+    ports:
+      - "15672:15672"   # mgmt UI (optional)
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  django:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    env_file:
+      - ./.envs/.django
+      - ./.envs/.postgres
+      - ./.envs/.celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    command: ["/compose/django/start.sh"]
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    env_file:
+      - ./.envs/.django
+      - ./.envs/.postgres
+      - ./.envs/.celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    command: ["/compose/celery/worker-start.sh"]
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    env_file:
+      - ./.envs/.django
+      - ./.envs/.postgres
+      - ./.envs/.celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    command: ["/compose/celery/beat-start.sh"]
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: compose/fastapi/Dockerfile
+    env_file:
+      - ./.envs/.fastapi
+      - ./.envs/.django
+      - ./.envs/.postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+    command: ["/compose/fastapi/start.sh"]
+
+  nginx:
+    build:
+      context: .
+      dockerfile: compose/nginx/Dockerfile
+    depends_on:
+      - django
+      - fastapi
+    volumes:
+      - static_volume:/static
+      - media_volume:/media
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
+  rabbitmq_data:

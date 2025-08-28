@@ -1,0 +1,148 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    env_file:
+      - ./.envs/.postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    env_file:
+      - ./.envs/.rabbitmq
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "15672:15672" # mgmt UI (опционально, можешь убрать наружу)
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Django (Gunicorn)
+  django:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    env_file:
+      - ./.envs/.django
+      - ./.envs/.postgres
+      - ./.envs/.celery
+    environment:
+      DEBUG: "0"
+      # Управление воркерами Gunicorn:
+      GUNICORN_WORKERS: "4"       # ≈ 2–4 × CPU cores
+      GUNICORN_THREADS: "2"
+      GUNICORN_TIMEOUT: "90"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    # entrypoint применит миграции/collectstatic, затем эта команда стартует gunicorn
+    command:
+      [
+        "sh","-lc",
+        "exec gunicorn django_project.wsgi:application \
+         --bind 0.0.0.0:8000 \
+         --workers ${GUNICORN_WORKERS:-4} \
+         --threads ${GUNICORN_THREADS:-2} \
+         --timeout ${GUNICORN_TIMEOUT:-90}"
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request,sys\nu='http://127.0.0.1:8000/health'\nurllib.request.urlopen(u, timeout=3)\nsys.exit(0)\nPY"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  # Celery worker
+  celery_worker:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    env_file:
+      - ./.envs/.django
+      - ./.envs/.postgres
+      - ./.envs/.celery
+    environment:
+      CELERY_WORKER_CONCURRENCY: "4"   # подстрой под CPU/нагрузку
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: ["/compose/celery/worker-start.sh"]
+    restart: unless-stopped
+
+  # Celery beat (django-celery-beat)
+  celery_beat:
+    build:
+      context: .
+      dockerfile: compose/django/Dockerfile
+    env_file:
+      - ./.envs/.django
+      - ./.envs/.postgres
+      - ./.envs/.celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: ["/compose/celery/beat-start.sh"]
+    restart: unless-stopped
+
+  # FastAPI (Uvicorn)
+  fastapi:
+    build:
+      context: .
+      dockerfile: compose/fastapi/Dockerfile
+    env_file:
+      - ./.envs/.fastapi
+      - ./.envs/.django
+      - ./.envs/.postgres
+    environment:
+      UVICORN_WORKERS: "4"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["/compose/fastapi/start.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request,sys\nu='http://127.0.0.1:8001/api/health'\nurllib.request.urlopen(u, timeout=3)\nsys.exit(0)\nPY"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: .
+      dockerfile: compose/nginx/Dockerfile
+    depends_on:
+      - django
+      - fastapi
+    volumes:
+      - static_volume:/static
+      - media_volume:/media
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  static_volume:
+  media_volume:
