@@ -10,3 +10,4 @@ django-celery-results>=2.5
 pydantic>=2.0
 pydantic-settings>=2.2
 udp-mongo-logger==1.0.2
+watchfiles>=0.21

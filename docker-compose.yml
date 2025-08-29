@@ -35,6 +35,8 @@ services:
       - ./.envs/.django
       - ./.envs/.postgres
       - ./.envs/.celery
+    environment:
+      DEBUG: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -54,6 +56,8 @@ services:
       - ./.envs/.django
       - ./.envs/.postgres
       - ./.envs/.celery
+    environment:
+      DEBUG: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,6 +75,8 @@ services:
       - ./.envs/.django
       - ./.envs/.postgres
       - ./.envs/.celery
+    environment:
+      DEBUG: "1"
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,6 +94,8 @@ services:
       - ./.envs/.fastapi
       - ./.envs/.django
       - ./.envs/.postgres
+    environment:
+      DEBUG: "1"
     depends_on:
       postgres:
         condition: service_healthy

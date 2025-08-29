@@ -1,10 +1,11 @@
-from time import sleep
+import logging
 
 from celery import shared_task
 
+logger = logging.getLogger("logger")
+
 
 @shared_task
-def add(x: int, y: int) -> int:
-    """Пример простой задачи."""
-    sleep(1)
-    return x + y
+def test_task():
+    logger.info(">>> Periodic test_task executed!")
+    return "ok"
