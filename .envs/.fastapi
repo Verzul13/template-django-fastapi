@@ -12,3 +12,7 @@ DJANGO_SETTINGS_MODULE=django_project.settings
 UDP_LOG_HOST=45.91.238.51
 UDP_LOG_PORT=9999
 SERVER_NAME=djangofastapi
+
+# Для миграций 
+FASTAPI_REFRESH_TOKEN=super-secret-refresh
+FASTAPI_INTERNAL_URL=http://fastapi:8001
