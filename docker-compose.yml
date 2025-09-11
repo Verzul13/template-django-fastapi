@@ -94,6 +94,7 @@ services:
       - ./.envs/.fastapi
       - ./.envs/.django
       - ./.envs/.postgres
+      - ./.envs/.celery
     environment:
       DEBUG: "1"
     depends_on:
