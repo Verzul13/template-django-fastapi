@@ -85,6 +85,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    volumes:
+      - media_volume:/app/media
     command: ["/compose/celery/worker-start.sh"]
     restart: unless-stopped
 
@@ -102,6 +104,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    volumes:
+      - media_volume:/app/media
     command: ["/compose/celery/beat-start.sh"]
     restart: unless-stopped
 
@@ -120,6 +124,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - media_volume:/app/media
     command: ["/compose/fastapi/start.sh"]
     healthcheck:
       test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request,sys\nu='http://127.0.0.1:8001/api/health'\nurllib.request.urlopen(u, timeout=3)\nsys.exit(0)\nPY"]

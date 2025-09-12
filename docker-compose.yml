@@ -65,6 +65,7 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - media_volume:/app/media
     command: ["/compose/celery/worker-start.sh"]
 
   celery_beat:
@@ -84,6 +85,7 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - media_volume:/app/media
     command: ["/compose/celery/beat-start.sh"]
 
   fastapi:
@@ -102,6 +104,7 @@ services:
         condition: service_healthy
     volumes:
       - ./src:/app/src
+      - media_volume:/app/media
     command: ["/compose/fastapi/start.sh"]
 
   nginx:
